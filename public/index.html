@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Universal Job Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#F6F5F2; --card:#FFF; --ink:#17171A; --muted:#5C5C66;
+    --line:#DEDDD7; --line-2:#EAE9E4;
+    --violet:#5B3DF5; --violet-soft:#5B3DF510; --violet-line:#5B3DF540;
+    --warm:#C2542F; --good:#1F7A4C;
+    --display:"Space Grotesk",system-ui,sans-serif;
+    --body:"Inter",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px 100px}
+
+  header{padding:56px 0 24px}
+  .kicker{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--violet);margin:0 0 16px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,6vw,56px);line-height:1.03;letter-spacing:-.03em;margin:0 0 14px}
+  .lede{max-width:58ch;color:var(--muted);font-size:17px;margin:0}
+
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:26px;margin-top:18px}
+  .step[data-off="1"]{opacity:.5;pointer-events:none}
+  .stephead{display:flex;gap:14px;align-items:center;margin-bottom:20px}
+  .badge{width:27px;height:27px;flex:0 0 27px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--display);font-size:13px;font-weight:700}
+  .step[data-done="1"] .badge{background:var(--good)}
+  .step[data-off="1"] .badge{background:var(--line)}
+  h2{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0}
+  .stephead p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  input,select,textarea{width:100%;padding:11px 13px;border:1px solid var(--line);background:#fff;font-family:var(--body);font-size:14.5px;color:var(--ink);border-radius:8px}
+  textarea{font-size:13.5px;resize:vertical;min-height:150px}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+  .drop{border:1.5px dashed var(--line);background:var(--bg);border-radius:10px;padding:34px 20px;text-align:center;cursor:pointer;transition:border-color .16s,background .16s}
+  .drop:hover,.drop.hot{border-color:var(--violet);background:var(--violet-soft)}
+  .drop b{font-family:var(--display);font-size:16px;font-weight:600}
+  .drop span{display:block;font-size:13.5px;color:var(--muted);margin-top:5px}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tab{font-size:13px;font-weight:600;padding:7px 13px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;border-radius:20px}
+  .tab[aria-selected=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  button.cta{font-family:var(--display);font-size:15px;font-weight:600;background:var(--violet);color:#fff;border:0;padding:13px 26px;cursor:pointer;border-radius:8px}
+  button.cta:hover{background:var(--ink)}
+  button.cta:disabled{background:var(--line);cursor:not-allowed}
+  .ghost{font-size:12.5px;font-weight:600;background:#fff;border:1px solid var(--line);padding:9px 14px;cursor:pointer;color:var(--muted);border-radius:8px}
+  .ghost:hover{border-color:var(--ink);color:var(--ink)}
+  .ghost[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:20px}
+  .stat{font-size:12.5px;color:var(--muted)}
+
+  .prof{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));margin-bottom:20px}
+  .prof div{background:var(--bg);border-radius:9px;padding:13px 15px}
+  .prof dt{font-size:11.5px;font-weight:600;color:var(--muted);margin:0 0 4px}
+  .prof dd{margin:0;font-family:var(--display);font-size:17px;font-weight:600;line-height:1.25}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:12.5px;background:var(--bg);border:1px solid var(--line-2);padding:5px 10px;border-radius:16px}
+  .chip.warn{background:#fff;border-color:var(--warm);color:var(--warm)}
+
+  .match{border-top:1px solid var(--line-2);padding:16px 0}
+  .mtop{display:flex;align-items:baseline;gap:12px}
+  .mcheck{margin:0;width:16px;height:16px;accent-color:var(--violet);flex:0 0 16px;position:relative;top:4px}
+  .mtitle{font-family:var(--display);font-size:17px;font-weight:600;flex:1;line-height:1.3;margin:0}
+  .mpct{font-family:var(--display);font-size:14px;font-weight:700;color:var(--violet);font-variant-numeric:tabular-nums}
+  .bar{height:5px;background:var(--line-2);border-radius:99px;margin:9px 0 8px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--violet);border-radius:99px;transition:width .5s ease}
+  .mwhy{margin:0;color:var(--muted);font-size:13.5px}
+  .mev{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .mev span{font-size:11.5px;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);padding:3px 8px;border-radius:12px}
+
+  /* JOB CARD — the product */
+  .job{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:0;margin-bottom:12px;overflow:hidden}
+  .job.saved{border-color:var(--good)}
+  .jtop{display:flex;gap:14px;align-items:flex-start;padding:17px 19px 0}
+  .jmain{flex:1;min-width:0}
+  .job h4{font-family:var(--display);font-size:17.5px;font-weight:600;margin:0 0 3px;line-height:1.25}
+  .jco{font-size:14.5px;font-weight:600}
+  .jloc{font-size:13.5px;color:var(--muted)}
+  .plat{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:5px 10px;border-radius:6px;background:var(--ink);color:#fff;white-space:nowrap}
+  .jbody{padding:13px 19px 17px}
+  .facts{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 13px}
+  .fact{background:var(--bg);border-radius:7px;padding:8px 12px;font-size:13px;min-width:110px}
+  .fact b{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:1px}
+  .fact.pay span{font-family:var(--display);font-weight:600}
+  .fact.nopay span{color:var(--muted)}
+  .jsum{margin:0 0 12px;font-size:14px;color:#2E2E36}
+  .jreq{margin:0 0 14px;padding-left:19px;font-size:13.5px;color:var(--muted)}
+  .jreq li{margin-bottom:3px}
+  .howto{background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:8px;padding:12px 14px}
+  .howto p{margin:0 0 9px;font-size:13px;color:var(--muted)}
+  .howto code{font-family:var(--display);font-size:13.5px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--violet-line);border-radius:6px;padding:6px 10px;display:inline-block;margin-bottom:9px}
+  .acts{display:flex;gap:8px;flex-wrap:wrap}
+  .btn-a{font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:7px;border:1px solid var(--violet);color:#fff;background:var(--violet);cursor:pointer}
+  .btn-a:hover{background:var(--ink);border-color:var(--ink)}
+  .btn-b{font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+  .btn-b:hover{border-color:var(--ink);color:var(--ink)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line-2)}
+  .filters .lbl{font-size:12.5px;font-weight:600;color:var(--muted);margin-right:2px}
+
+  .tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:9px;margin-bottom:18px}
+  .tally div{background:var(--bg);border-radius:9px;padding:11px 13px}
+  .tally b{display:block;font-family:var(--display);font-size:23px;font-weight:700;line-height:1.1}
+  .tally span{font-size:11.5px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{font-size:11.5px;font-weight:600;color:var(--muted);text-align:left;padding:8px 9px;border-bottom:1px solid var(--line)}
+  td{padding:11px 9px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  td select{padding:6px 8px;font-size:12.5px;border-radius:6px}
+  .role{font-weight:600}
+  .co2{color:var(--muted);font-size:13px}
+  .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:17px;padding:0 5px;line-height:1}
+  .x:hover{color:var(--warm)}
+  .flag{font-size:10.5px;font-weight:700;color:#fff;background:var(--warm);padding:2px 7px;border-radius:11px;white-space:nowrap}
+
+  .note{background:var(--bg);border-left:3px solid var(--violet);border-radius:0 7px 7px 0;padding:12px 15px;color:var(--muted);font-size:13.5px}
+  .note.bad{border-left-color:var(--warm);color:var(--warm)}
+  .note strong{color:var(--ink)}
+  .empty{border:1.5px dashed var(--line);border-radius:10px;padding:26px;text-align:center;color:var(--muted);font-size:14px}
+  .hidden{display:none}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--violet);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:7px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}*{transition:none!important}}
+  footer{padding:26px 2px;font-size:12.5px;color:var(--muted);max-width:82ch}
+  /* ATS report */
+  .gauge{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:22px}
+  .ring{position:relative;width:118px;height:118px;flex:0 0 118px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:31px;font-weight:700;line-height:1}
+  .ring .num small{display:block;font-size:10.5px;font-weight:600;color:var(--muted);letter-spacing:.1em;margin-top:2px}
+  .gauge .said{flex:1;min-width:220px}
+  .gauge .said h3{font-family:var(--display);font-size:18px;font-weight:600;margin:0 0 6px;line-height:1.35}
+  .gauge .said p{margin:0;color:var(--muted);font-size:13.5px}
+  .dims{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));margin-bottom:22px}
+  .dim{background:var(--bg);border-radius:9px;padding:13px 15px}
+  .dim .dh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .dim .dn{font-size:13px;font-weight:600}
+  .dim .ds{font-family:var(--display);font-size:15px;font-weight:700}
+  .dim .db{height:4px;background:var(--line-2);border-radius:99px;margin:8px 0 7px;overflow:hidden}
+  .dim .db i{display:block;height:100%;border-radius:99px}
+  .dim p{margin:0;font-size:12.5px;color:var(--muted)}
+  .fix{display:flex;gap:12px;padding:13px 0;border-top:1px solid var(--line-2)}
+  .fix:first-child{border-top:0}
+  .pri{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:12px;height:fit-content;white-space:nowrap}
+  .pri.High{background:#FBE9E3;color:var(--warm)}
+  .pri.Medium{background:#FFF4E0;color:#8A6320}
+  .pri.Low{background:var(--bg);color:var(--muted)}
+  .fix .ft{font-size:14px;font-weight:600;margin:0 0 3px}
+  .fix .fw{font-size:13px;color:var(--muted);margin:0}
+  .onething{background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:9px;padding:14px 16px;margin-bottom:20px}
+  .onething b{display:block;font-size:11.5px;font-weight:600;color:var(--violet);margin-bottom:4px}
+  .risk{background:#FBE9E3;border-left:3px solid var(--warm);border-radius:0 8px 8px 0;padding:12px 15px;margin-bottom:18px}
+  .risk b{display:block;font-size:12.5px;margin-bottom:6px}
+  .risk ul{margin:0;padding-left:18px;font-size:13.5px;color:#7A3A22}
+
+  /* auth */
+  .gate{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:30px 28px;margin-top:18px}
+  .gate h2{margin-bottom:6px}
+  .gate p.why{color:var(--muted);font-size:14px;margin:0 0 20px;max-width:56ch}
+  .gate form{display:flex;gap:9px;flex-wrap:wrap;max-width:460px}
+  .gate input{flex:1;min-width:210px}
+  .gate .fine{font-size:12.5px;color:var(--muted);margin:14px 0 0;max-width:58ch}
+  .acctbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 16px;margin-top:18px;font-size:13.5px}
+  .acctbar .who{flex:1;color:var(--muted)}
+  .acctbar .who b{color:var(--ink);font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block;margin-right:7px}
+  .sent{background:#F1FAF5;border:1px solid #BFE3CE;color:var(--good);border-radius:9px;padding:14px 16px;font-size:14px;max-width:520px}
+  @media(max-width:600px){.hcol{display:none}.jtop{flex-direction:column-reverse;align-items:flex-start}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="kicker">Any profession &middot; Any country</p>
+    <h1>Upload a resume.<br>Get the jobs that fit.</h1>
+    <p class="lede">It reads your skills and job title, works out which roles suit you, then lists real openings with
+      the company, location, pay and which platform each one is on — so you can go straight to that platform and apply.</p>
+  </header>
+
+  <!-- account -->
+  <div class="gate" id="gate">
+    <h2>Create an account to start</h2>
+    <p class="why">Your matched roles and everything you apply to are saved to your account, so you can close
+      this and pick the search back up next week from any device.</p>
+    <form id="authForm">
+      <input type="email" id="email" placeholder="you@email.com" autocomplete="email" required>
+      <button class="cta" type="submit" id="authBtn">Email me a sign-in link</button>
+    </form>
+    <div class="sent hidden" id="sent"></div>
+    <p class="fine">No password to remember — we email you a link that signs you in. We store your name, email,
+      the roles matched to you and your application list. We do not keep the resume file itself.</p>
+    <p class="note bad hidden" id="authErr" style="margin-top:14px"></p>
+  </div>
+
+  <div class="acctbar hidden" id="acct">
+    <span class="who"><span class="dot"></span>Signed in as <b id="whoEmail"></b></span>
+    <button class="ghost" id="signout">Sign out</button>
+  </div>
+
+  <!-- 1 -->
+  <div class="step app hidden" id="s1">
+    <div class="stephead"><span class="badge">1</span>
+      <div><h2>Upload your resume</h2><p>PDF, or paste the text</p></div></div>
+    <div class="tabs">
+      <button class="tab" aria-selected="true" data-mode="file">Upload PDF</button>
+      <button class="tab" aria-selected="false" data-mode="text">Paste text</button>
+    </div>
+    <div id="pane-file">
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a resume PDF">
+        <b id="dropTitle">Drop your resume here</b>
+        <span id="dropSub">or click to choose a file &middot; PDF, up to 3 MB</span>
+      </div>
+      <input type="file" id="file" accept="application/pdf" class="hidden">
+    </div>
+    <div id="pane-text" class="hidden">
+      <label for="rtext">Resume text</label>
+      <textarea id="rtext" placeholder="Paste your full resume text here."></textarea>
+    </div>
+    <div class="row"><button class="cta" id="parse">Read my resume</button><span class="stat" id="s1status"></span></div>
+    <p class="note bad hidden" id="err1" style="margin-top:16px"></p>
+  </div>
+
+  <!-- 2 -->
+  <div class="step app hidden" id="s2" data-off="1">
+    <div class="stephead"><span class="badge">2</span>
+      <div><h2>Roles that match you</h2><p>Untick anything you don't want searched</p></div></div>
+    <dl class="prof" id="prof"></dl>
+    <div style="margin-bottom:18px"><label>Skills found in your resume</label><div class="chips" id="skills"></div></div>
+    <div id="matches"></div>
+    <div style="margin-top:20px"><label>Titles worth avoiding — usually paid below your level</label>
+      <div class="chips" id="avoid"></div></div>
+  </div>
+
+  <!-- 3 : resume ATS check -->
+  <div class="step app hidden" id="sats" data-off="1">
+    <div class="stephead"><span class="badge">3</span>
+      <div><h2>Resume ATS check</h2><p>How your resume survives automated screening</p></div></div>
+    <div class="grid" style="margin-bottom:16px">
+      <div><label for="atsTarget">Score against</label><select id="atsTarget"></select></div>
+      <div><label for="atsJdToggle">Compare with a job description?</label><select id="atsJdToggle">
+        <option value="no" selected>No — score against the role generally</option>
+        <option value="yes">Yes — I'll paste one</option></select></div>
+    </div>
+    <div id="atsJdWrap" class="hidden" style="margin-bottom:16px">
+      <label for="atsJd">Paste the job description</label>
+      <textarea id="atsJd" placeholder="Paste the full job description. Scoring against a real posting is far more accurate than scoring against a title." style="min-height:120px"></textarea>
+    </div>
+    <div class="row" style="margin-top:0">
+      <button class="cta" id="runAts">Check my resume</button>
+      <span class="stat" id="atsStatus"></span>
+    </div>
+    <div id="atsOut" class="hidden" style="margin-top:24px"></div>
+    <p class="note" id="atsCaveat" style="margin-top:18px;display:none"></p>
+  </div>
+
+  <!-- 4 -->
+  <div class="step app hidden" id="s3" data-off="1">
+    <div class="stephead"><span class="badge">4</span>
+      <div><h2>Where, and for how much</h2><p>Filters every search</p></div></div>
+    <div class="grid">
+      <div><label for="country">Country</label><select id="country"></select></div>
+      <div><label for="city">City or region</label><input type="text" id="city" placeholder="Pune"></div>
+      <div><label for="mode">Work mode</label><select id="mode">
+        <option value="any">Any</option><option value="remote">Remote only</option>
+        <option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select></div>
+      <div><label for="jobType">Employment type</label><select id="jobType">
+        <option value="">Any</option><option>Full-time</option><option>Part-time</option>
+        <option>Contract</option><option>Temporary</option><option>Internship</option>
+        <option>Freelance</option><option>Apprenticeship</option><option>Volunteer</option></select></div>
+      <div><label for="level">Experience level</label><select id="level">
+        <option value="">Match my resume</option><option>Entry</option><option>Junior</option>
+        <option>Mid</option><option>Senior</option><option>Lead</option><option>Manager</option>
+        <option>Director</option><option>Executive</option></select></div>
+      <div><label for="industry">Industry</label><select id="industry"></select></div>
+      <div><label for="payAmt">Minimum pay</label><input type="number" id="payAmt" min="0" step="1" placeholder="18"></div>
+      <div><label for="currency">Currency</label><select id="currency"></select></div>
+      <div><label for="period">Pay period</label><select id="period">
+        <option value="LPA" selected>LPA (lakhs per year)</option><option value="per year">Per year</option>
+        <option value="per month">Per month</option><option value="per day">Per day</option>
+        <option value="per hour">Per hour</option></select></div>
+      <div><label for="age">Posted within</label><select id="age">
+        <option value="1">24 hours</option><option value="3">3 days</option>
+        <option value="7">7 days</option><option value="14" selected>14 days</option>
+        <option value="30">30 days</option><option value="60">60 days</option></select></div>
+      <div><label for="roleCount">Roles to search</label><select id="roleCount">
+        <option value="2">2 — fastest</option><option value="3" selected>3</option>
+        <option value="4">4</option><option value="5">5 — widest</option></select></div>
+      <div><label for="sortBy">Sort results by</label><select id="sortBy">
+        <option value="match" selected>Best match</option><option value="pay">Pay stated first</option>
+        <option value="company">Company A–Z</option><option value="platform">Platform</option></select></div>
+    </div>
+    <div class="row"><button class="cta" id="search">Find jobs</button><span class="stat" id="s3status"></span></div>
+  </div>
+
+  <!-- 5 -->
+  <div class="step app hidden" id="s4" data-off="1">
+    <div class="stephead"><span class="badge">5</span>
+      <div><h2>Openings for you</h2><p id="foundLine">Company, location, pay and platform for each</p></div></div>
+    <div class="filters hidden" id="filters"></div>
+    <div id="jobs"></div>
+    <div id="atsBoards" class="hidden" style="margin-top:30px;padding-top:22px;border-top:1px solid var(--line-2)">
+      <label style="margin-bottom:6px">Company hiring systems</label>
+      <p style="margin:0 0 14px;color:var(--muted);font-size:13.5px;max-width:70ch">Most companies post to their
+        own hiring software before the job boards, and plenty never post to a board at all. These searches read
+        those systems directly, so you see roles earlier and against fewer applicants.</p>
+      <div class="acts" id="atsBoardLinks"></div>
+    </div>
+    <div class="row"><button class="ghost" id="csvJobs">Export these jobs (.csv)</button>
+      <button class="ghost" id="dl">Download full report (.md)</button></div>
+  </div>
+
+  <!-- tracker -->
+  <div class="step app hidden" id="s5">
+    <div class="stephead"><span class="badge">&#10003;</span>
+      <div><h2>Your applications</h2><p>Saved between visits</p></div></div>
+    <div class="tally" id="tally"></div>
+    <div id="tableWrap"></div>
+    <div class="row">
+      <button class="ghost" id="addManual">Add one manually</button>
+      <button class="ghost" id="csv">Export CSV</button>
+      <button class="ghost" id="clear">Clear all</button>
+    </div>
+    <div id="manualForm" class="hidden" style="margin-top:18px;background:var(--bg);border-radius:10px;padding:18px">
+      <div class="grid">
+        <div><label for="mRole">Role</label><input type="text" id="mRole"></div>
+        <div><label for="mCo">Company</label><input type="text" id="mCo"></div>
+        <div><label for="mLoc">Location</label><input type="text" id="mLoc"></div>
+        <div><label for="mPlat">Platform</label><input type="text" id="mPlat" placeholder="Naukri"></div>
+        <div><label for="mUrl">Link (optional)</label><input type="text" id="mUrl" placeholder="https://"></div>
+        <div><label for="mStat">Status</label><select id="mStat"></select></div>
+      </div>
+      <div class="row"><button class="ghost" id="mSave">Save</button><button class="ghost" id="mCancel">Cancel</button></div>
+    </div>
+  </div>
+
+  <footer>
+    Openings are found by searching the web when you press Find jobs, so they are current but not a complete index.
+    Role summaries are written fresh rather than copied from the posting. Pay is shown only where the employer
+    states it. Nothing is collected from any job site's own system — you search and apply on the platform yourself,
+    logged into your own account.
+  </footer>
+</div>
+
+<script>
+/* ===================================================================
+   CONFIG — paste your two Supabase values here (see README, step 2).
+   The anon key is meant to be public: it only permits what your Row
+   Level Security policies allow, and those restrict every row to its
+   own owner. Never put the service_role key in this file.
+   =================================================================== */
+const SUPABASE_URL      = 'https://YOUR-PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const STATUSES=['Saved','Applied','Screening','Interviewing','Offer','Closed'];
+const KEY='jobfinder:applications:v2';
+let resumeB64=null,PROFILE=null,JOBS=[],APPS=[],storageOK=true,FILTER='all';
+
+/* ---------- resume input ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+  $('#pane-file').classList.toggle('hidden',t.dataset.mode!=='file');
+  $('#pane-text').classList.toggle('hidden',t.dataset.mode!=='text');
+});
+const drop=$('#drop'),fileInput=$('#file');
+drop.onclick=()=>fileInput.click();
+drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.click();}};
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hot');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot');}));
+drop.addEventListener('drop',e=>{if(e.dataTransfer.files[0])takeFile(e.dataTransfer.files[0]);});
+fileInput.onchange=()=>{if(fileInput.files[0])takeFile(fileInput.files[0]);};
+async function takeFile(f){
+  if(f.type!=='application/pdf')return err1('That file is not a PDF. Upload a PDF, or paste the text instead.');
+  if(f.size>3*1024*1024)return err1('That PDF is over 3 MB. Save a smaller copy, or paste the text instead.');
+  hideErr1();
+  $('#dropTitle').textContent=f.name;
+  $('#dropSub').textContent=Math.round(f.size/1024)+' KB · ready';
+  resumeB64=await new Promise((res,rej)=>{const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('read'));r.readAsDataURL(f);});
+}
+const err1=m=>{const b=$('#err1');b.textContent=m;b.classList.remove('hidden');};
+const hideErr1=()=>$('#err1').classList.add('hidden');
+const enable=(id,on)=>$(id).setAttribute('data-off',on?'0':'1');
+const reduced=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+/* ---------- option lists ---------- */
+const COUNTRIES=[
+ ['IN','India'],['US','United States'],['GB','United Kingdom'],['AE','United Arab Emirates'],
+ ['SA','Saudi Arabia'],['QA','Qatar'],['KW','Kuwait'],['OM','Oman'],['BH','Bahrain'],
+ ['CA','Canada'],['AU','Australia'],['NZ','New Zealand'],['SG','Singapore'],['MY','Malaysia'],
+ ['ID','Indonesia'],['PH','Philippines'],['TH','Thailand'],['VN','Vietnam'],['HK','Hong Kong'],
+ ['JP','Japan'],['KR','South Korea'],['CN','China'],['TW','Taiwan'],['LK','Sri Lanka'],
+ ['BD','Bangladesh'],['PK','Pakistan'],['NP','Nepal'],
+ ['DE','Germany'],['FR','France'],['NL','Netherlands'],['BE','Belgium'],['IE','Ireland'],
+ ['ES','Spain'],['IT','Italy'],['PT','Portugal'],['CH','Switzerland'],['AT','Austria'],
+ ['SE','Sweden'],['NO','Norway'],['DK','Denmark'],['FI','Finland'],['PL','Poland'],
+ ['CZ','Czechia'],['RO','Romania'],['HU','Hungary'],['GR','Greece'],['TR','Turkey'],
+ ['RU','Russia'],['UA','Ukraine'],
+ ['ZA','South Africa'],['NG','Nigeria'],['KE','Kenya'],['EG','Egypt'],['GH','Ghana'],['MA','Morocco'],
+ ['BR','Brazil'],['MX','Mexico'],['AR','Argentina'],['CL','Chile'],['CO','Colombia'],['PE','Peru'],
+ ['IL','Israel'],['XX','Anywhere / global'],
+];
+const INDUSTRIES=['','Accounting & Finance','Advertising & Marketing','Aerospace & Defence','Agriculture',
+ 'Architecture','Automotive','Aviation','Banking','Biotechnology','Construction','Consulting',
+ 'Consumer Goods & FMCG','Customer Service','Design & Creative','E-commerce & Retail','Education',
+ 'Energy & Utilities','Engineering','Environment & Sustainability','Fashion & Apparel','Food & Beverage',
+ 'Government & Public Sector','Healthcare & Hospital','Hospitality & Travel','Human Resources',
+ 'Information Technology','Insurance','Legal','Logistics & Supply Chain','Manufacturing','Media & Entertainment',
+ 'Mining & Metals','Non-profit & NGO','Oil & Gas','Pharmaceuticals','Real Estate','Research & Science',
+ 'Sales & Business Development','Security & Defence','Shipping & Maritime','Sports & Fitness',
+ 'Telecommunications','Textiles','Transport','Veterinary','Other'];
+const CURRENCIES=['INR','USD','GBP','EUR','AED','SAR','QAR','SGD','MYR','AUD','NZD','CAD','CHF','SEK','NOK',
+ 'DKK','PLN','ZAR','NGN','KES','EGP','BRL','MXN','JPY','KRW','CNY','HKD','TWD','THB','IDR','PHP','VND',
+ 'LKR','BDT','PKR','NPR','TRY','ILS','RUB'];
+
+function fillSelects(){
+  $('#country').innerHTML=COUNTRIES.map(([v,l])=>`<option value="${v}"${v==='IN'?' selected':''}>${l}</option>`).join('');
+  $('#industry').innerHTML=INDUSTRIES.map(v=>`<option value="${v}">${v||'Any'}</option>`).join('');
+  $('#currency').innerHTML=CURRENCIES.map(v=>`<option value="${v}"${v==='INR'?' selected':''}>${v}</option>`).join('');
+}
+fillSelects();
+
+// keep pay period and currency sensible together
+$('#currency').addEventListener('change',()=>{
+  const lpa=$('#period').querySelector('option[value="LPA"]');
+  const isINR=$('#currency').value==='INR';
+  lpa.disabled=!isINR;
+  if(!isINR && $('#period').value==='LPA') $('#period').value='per year';
+});
+
+function payString(){
+  const amt=$('#payAmt').value.trim();
+  if(!amt) return '';
+  const per=$('#period').value, cur=$('#currency').value;
+  return per==='LPA' ? `${amt} LPA` : `${amt} ${cur} ${per}`;
+}
+
+/* ---------- platform search links ---------- */
+const PLATFORM_SEARCH={
+  naukri:(t,c)=>`https://www.naukri.com/${t.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/ +/g,'-')}-jobs?k=${encodeURIComponent(t+' '+c)}`,
+  linkedin:(t,c)=>`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(t+' '+c)}&sortBy=DD`,
+  indeed:(t,c,cc)=>`https://${({IN:'in',US:'www',GB:'uk',AE:'ae',CA:'ca',AU:'au',SG:'sg',DE:'de'})[cc]||'www'}.indeed.com/jobs?q=${encodeURIComponent(t+' '+c)}&sort=date`,
+  foundit:(t,c)=>`https://www.foundit.in/srp/results?query=${encodeURIComponent(t+' '+c)}`,
+  glassdoor:(t,c)=>`https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(t+' '+c)}`,
+  ziprecruiter:(t,c)=>`https://www.ziprecruiter.com/jobs-search?search=${encodeURIComponent(t+' '+c)}`,
+  reed:(t,c)=>`https://www.reed.co.uk/jobs?keywords=${encodeURIComponent(t+' '+c)}`,
+  totaljobs:(t,c)=>`https://www.totaljobs.com/jobs?Keywords=${encodeURIComponent(t+' '+c)}`,
+  seek:(t,c)=>`https://www.seek.com.au/jobs?keywords=${encodeURIComponent(t+' '+c)}`,
+  bayt:(t,c)=>`https://www.bayt.com/en/uae/jobs/?text=${encodeURIComponent(t+' '+c)}`,
+  gulftalent:(t,c)=>`https://www.gulftalent.com/jobs/search?keywords=${encodeURIComponent(t+' '+c)}`,
+  stepstone:(t,c)=>`https://www.stepstone.de/jobs?what=${encodeURIComponent(t+' '+c)}`,
+  monster:(t,c)=>`https://www.monster.com/jobs/search?q=${encodeURIComponent(t+' '+c)}`,
+  shine:(t,c)=>`https://www.shine.com/job-search/?q=${encodeURIComponent(t+' '+c)}`,
+  instahyre:(t,c)=>`https://www.instahyre.com/search/?q=${encodeURIComponent(t+' '+c)}`,
+  wellfound:(t,c)=>`https://wellfound.com/jobs?query=${encodeURIComponent(t+' '+c)}`,
+  dice:(t,c)=>`https://www.dice.com/jobs?q=${encodeURIComponent(t+' '+c)}`,
+  hh:(t,c)=>`https://hh.ru/search/vacancy?text=${encodeURIComponent(t+' '+c)}`,
+  computrabajo:(t,c)=>`https://www.computrabajo.com/trabajo-de-${encodeURIComponent(t)}`,
+};
+function platformSearchUrl(platform,title,company,cc){
+  const key=String(platform||'').toLowerCase().replace(/[^a-z]/g,'');
+  for(const k in PLATFORM_SEARCH) if(key.includes(k)) return PLATFORM_SEARCH[k](title,company,cc);
+  // unknown platform, or the company's own careers site
+  return `https://www.google.com/search?q=${encodeURIComponent(`"${title}" "${company}" ${platform||''} careers`)}`;
+}
+
+/* ---------- backend ---------- */
+async function api(path,payload){
+  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)});
+  if(!r.ok){
+    let msg='';try{msg=(await r.json()).error||'';}catch(_){}
+    throw new Error(msg||('Request failed: '+r.status));
+  }
+  return r.json();
+}
+
+/* ---------- step 1 ---------- */
+$('#parse').onclick=async()=>{
+  const text=$('#rtext').value.trim();
+  if(!resumeB64&&text.length<120)return err1('Add a resume first — upload a PDF or paste at least a few lines.');
+  hideErr1();
+  $('#parse').disabled=true;
+  $('#s1status').innerHTML='<span class="spin"></span>Reading skills and job titles';
+  try{
+    PROFILE=await api('/api/parse',{pdf:resumeB64||null,text:text||null});
+    paintProfile(PROFILE);
+    $('#s1status').textContent='';
+    $('#s1').setAttribute('data-done','1');
+    enable('#s2',true);enable('#sats',true);enable('#s3',true);
+    fillAtsTargets();
+    saveProfile();
+    $('#s2').scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});
+  }catch(e){
+    console.error(e);
+    err1('The resume could not be read this time. Try again, or paste the text instead of the PDF.');
+    $('#s1status').textContent='';
+  }finally{$('#parse').disabled=false;}
+};
+function paintProfile(p){
+  $('#prof').innerHTML=`
+    <div><dt>Current title</dt><dd>${esc(p.designation)}</dd></div>
+    <div><dt>Field</dt><dd>${esc(p.field)}</dd></div>
+    <div><dt>Level</dt><dd>${esc(p.seniority)}</dd></div>
+    <div><dt>Experience</dt><dd>${esc(p.years)} years</dd></div>`;
+  $('#skills').innerHTML=(p.skills||[]).map(s=>`<span class="chip">${esc(s)}</span>`).join('');
+  $('#matches').innerHTML=(p.roles||[]).map((r,i)=>`
+    <div class="match">
+      <div class="mtop">
+        <input class="mcheck" type="checkbox" id="r${i}" data-role="${i}" ${i<4?'checked':''}>
+        <label class="mtitle" for="r${i}">${esc(r.title)}</label>
+        <span class="mpct">${esc(r.match)}%</span>
+      </div>
+      <div class="bar"><i style="width:${Math.max(0,Math.min(100,+r.match||0))}%"></i></div>
+      <p class="mwhy">${esc(r.why)}</p>
+      <div class="mev">${(r.evidence||[]).map(x=>`<span>${esc(x)}</span>`).join('')}</div>
+    </div>`).join('');
+  $('#avoid').innerHTML=(p.avoid||[]).map(a=>`<span class="chip warn">${esc(a)}</span>`).join('');
+}
+
+/* ---------- step 3: find jobs (parallel) ---------- */
+$('#search').onclick=async()=>{
+  if(!PROFILE)return;
+  const picked=[...document.querySelectorAll('.mcheck:checked')].map(c=>PROFILE.roles[+c.dataset.role])
+    .filter(Boolean).slice(0,+$('#roleCount').value);
+  if(!picked.length){$('#s3status').textContent='Tick at least one role in step 2.';return;}
+  const city=$('#city').value.trim(), pay=payString(), mode=$('#mode').value,
+        days=+$('#age').value, country=$('#country option:checked').textContent, years=PROFILE.years||'',
+        jobType=$('#jobType').value, level=$('#level').value, industry=$('#industry').value;
+  const where=[city,country].filter(Boolean).join(', ');
+  enable('#s4',true);
+  $('#search').disabled=true; JOBS=[]; FILTER='all';
+  $('#jobs').innerHTML=`<div class="empty"><span class="spin"></span>Searching ${picked.length} roles at once…</div>`;
+  $('#filters').classList.add('hidden');
+
+  let done=0;
+  const tick=()=>{done++;$('#s3status').innerHTML=`<span class="spin"></span>${done} of ${picked.length} roles searched`;};
+
+  const jobsFor=async(role)=>{
+    try{
+      const arr=await api('/api/jobs',{title:role.title,where,mode,days,pay,jobType,level,industry,
+        years:String(years),field:PROFILE.field||''});
+      return (arr||[]).filter(x=>x&&x.title&&x.company).map(x=>({...x,role:role.title,match:role.match}));
+    }catch(e){ console.error('search failed',role.title,e); return []; }
+    finally{ tick(); }
+  };
+
+  const results=(await Promise.all(picked.map(jobsFor))).flat();
+
+  // dedupe on company + title
+  const seen=new Set();
+  JOBS=results.filter(j=>{
+    const k=(j.company+'|'+j.title).toLowerCase().replace(/\s+/g,' ').trim();
+    if(seen.has(k))return false; seen.add(k); return true;
+  });
+  sortJobs();
+
+  buildBoardLinks(picked, city, country);
+  $('#s3status').textContent=JOBS.length?`${JOBS.length} openings found`:'';
+  $('#foundLine').textContent=JOBS.length
+    ?`${JOBS.length} openings · searched ${new Date().toLocaleString()}`
+    :'Company, location, pay and platform for each';
+  drawFilters(); drawJobs();
+  $('#search').disabled=false;
+  $('#s4').scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});
+};
+
+function sortJobs(){
+  const by=$('#sortBy').value;
+  JOBS.sort((a,b)=>{
+    if(by==='pay') return (b.pay?1:0)-(a.pay?1:0) || (b.match||0)-(a.match||0);
+    if(by==='company') return String(a.company).localeCompare(String(b.company));
+    if(by==='platform') return String(a.platform).localeCompare(String(b.platform));
+    return (b.match||0)-(a.match||0);
+  });
+}
+$('#sortBy').addEventListener('change',()=>{ if(JOBS.length){ sortJobs(); drawJobs(); } });
+
+const BOARD_SYSTEMS=[
+  ['Greenhouse','site:job-boards.greenhouse.io OR site:boards.greenhouse.io'],
+  ['Lever','site:jobs.lever.co'],
+  ['Ashby','site:jobs.ashbyhq.com'],
+  ['Workday','site:myworkdayjobs.com'],
+  ['SmartRecruiters','site:jobs.smartrecruiters.com'],
+  ['Workable','site:apply.workable.com'],
+  ['BambooHR','site:bamboohr.com/careers'],
+  ['Teamtailor','site:teamtailor.com'],
+  ['Recruitee','site:recruitee.com'],
+  ['Personio','site:jobs.personio.de'],
+  ['iCIMS','site:icims.com'],
+  ['Taleo','site:taleo.net'],
+  ['SuccessFactors','site:successfactors.com'],
+  ['Zoho Recruit','site:zohorecruit.com'],
+];
+function buildBoardLinks(roles, city, country){
+  if(!roles.length){ $('#atsBoards').classList.add('hidden'); return; }
+  const where=[city,country].filter(x=>x&&x!=='Anywhere / global').join(' ');
+  const terms=roles.map(r=>`"${r.title}"`).join(' OR ');
+  $('#atsBoardLinks').innerHTML=BOARD_SYSTEMS.map(([n,q])=>
+    `<a class="btn-b" target="_blank" rel="noopener noreferrer"
+       href="https://www.google.com/search?q=${encodeURIComponent(`${q} (${terms}) ${where}`)}">${n}</a>`).join('');
+  $('#atsBoards').classList.remove('hidden');
+}
+
+/* ---------- results ---------- */
+function drawFilters(){
+  if(!JOBS.length){$('#filters').classList.add('hidden');return;}
+  const plats=[...new Set(JOBS.map(j=>(j.platform||'Other').trim()))];
+  $('#filters').classList.remove('hidden');
+  $('#filters').innerHTML=`<span class="lbl">Platform</span>`+
+    [['all','All ('+JOBS.length+')'],...plats.map(p=>[p,`${p} (${JOBS.filter(j=>(j.platform||'Other').trim()===p).length})`])]
+    .map(([v,l])=>`<button class="ghost" data-filter="${esc(v)}" aria-pressed="${FILTER===v}">${esc(l)}</button>`).join('')+
+    `<span class="lbl" style="margin-left:8px">Pay stated</span>
+     <button class="ghost" data-filter="__pay" aria-pressed="${FILTER==='__pay'}">Only these (${JOBS.filter(j=>j.pay).length})</button>`;
+}
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-filter]'); if(!f)return;
+  FILTER=f.dataset.filter; drawFilters(); drawJobs();
+});
+const visible=()=>FILTER==='all'?JOBS:FILTER==='__pay'?JOBS.filter(j=>j.pay):JOBS.filter(j=>(j.platform||'Other').trim()===FILTER);
+
+function drawJobs(){
+  const list=visible();
+  if(!list.length){
+    $('#jobs').innerHTML=`<div class="empty">${JOBS.length?'Nothing under this filter.':
+      'No openings found. Try a wider posted-within window, or fewer pay constraints.'}</div>`;
+    return;
+  }
+  $('#jobs').innerHTML=list.map(j=>{
+    const i=JOBS.indexOf(j);
+    const on=APPS.some(a=>a.role===j.title&&a.company===j.company);
+    const searchText=`${j.title} ${j.company}`;
+    return `<div class="job ${on?'saved':''}">
+      <div class="jtop">
+        <div class="jmain">
+          <h4>${esc(j.title)}</h4>
+          <div class="jco">${esc(j.company)}</div>
+          <div class="jloc">${esc(j.location||'')}</div>
+        </div>
+        <span class="plat">${esc(j.platform||'Careers site')}</span>
+      </div>
+      <div class="jbody">
+        <div class="facts">
+          <div class="fact ${j.pay?'pay':'nopay'}"><b>Pay</b><span>${j.pay?esc(j.pay):'Not disclosed'}</span></div>
+          <div class="fact"><b>Posted</b><span>${esc(j.posted||'recently')}</span></div>
+          <div class="fact"><b>Matched to</b><span>${esc(j.role)}</span></div>
+        </div>
+        <p class="jsum">${esc(j.summary||'')}</p>
+        ${(j.requirements||[]).length?`<ul class="jreq">${j.requirements.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
+        <div class="howto">
+          <p>${j.url
+            ? `Open the posting, or sign in to <strong>${esc(j.platform||'the platform')}</strong> and search:`
+            : `Sign in to <strong>${esc(j.platform||'the company careers site')}</strong> and search:`}</p>
+          <code id="q${i}">${esc(searchText)}</code>
+          <div class="acts">
+            ${j.url?`<a class="btn-a" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">Open posting</a>`:''}
+            <a class="btn-b" href="${esc(platformSearchUrl(j.platform,j.title,j.company,$('#country').value))}"
+               target="_blank" rel="noopener noreferrer">Search on ${esc(j.platform||'Google')}</a>
+            <button class="btn-b" data-copy="${i}">Copy search text</button>
+            <button class="btn-b" data-save="${i}">${on?'In my list':'Save to my list'}</button>
+            <button class="btn-b" data-applied2="${i}">Mark as applied</button>
+          </div>
+        </div>
+      </div></div>`;}).join('');
+}
+document.addEventListener('click',async e=>{
+  const c=e.target.closest('[data-copy]');
+  if(c){ const j=JOBS[+c.dataset.copy];
+    try{ await navigator.clipboard.writeText(`${j.title} ${j.company}`); c.textContent='Copied'; }
+    catch{ c.textContent='Select the text above'; }
+    setTimeout(()=>c.textContent='Copy search text',1600); return; }
+  const s=e.target.closest('[data-save]'); if(s){ await addApp(JOBS[+s.dataset.save],'Saved'); return; }
+  const a=e.target.closest('[data-applied2]'); if(a){ await addApp(JOBS[+a.dataset.applied2],'Applied'); }
+});
+
+/* ---------- applications, stored on the account ---------- */
+const today=()=>new Date().toISOString().slice(0,10);
+const daysSince=d=>Math.floor((Date.now()-new Date(d+'T00:00:00').getTime())/86400000);
+
+async function load(){
+  if(!USER){ APPS=[]; drawTable(); return; }
+  const { data, error } = await sb.from('applications')
+    .select('*').eq('user_id',USER.id).order('created_at',{ascending:false});
+  if(error){ storageOK=false; console.error(error); }
+  APPS=(data||[]);
+  drawTable();
+}
+
+async function addApp(j,status){
+  if(!j||!USER)return;
+  const hit=APPS.find(a=>a.role===j.title&&a.company===j.company);
+  if(hit){
+    if(status==='Applied'&&hit.status!=='Applied'){
+      hit.status='Applied'; hit.date=today();
+      await sb.from('applications').update({status:'Applied',date:hit.date}).eq('id',hit.id);
+      drawTable();
+    }
+    drawJobs(); return;
+  }
+  const row={ user_id:USER.id, role:j.title||'', company:j.company||'', loc:j.location||'',
+    platform:j.platform||'', pay:j.pay||'', url:j.url||'', status, date:today() };
+  const { data, error } = await sb.from('applications').insert(row).select().single();
+  if(error){ console.error(error); storageOK=false; drawTable(); return; }
+  APPS.unshift(data); drawTable(); drawJobs();
+}
+
+function drawTable(){
+  const c={};STATUSES.forEach(x=>c[x]=0);APPS.forEach(a=>{if(c[a.status]!==undefined)c[a.status]++;});
+  $('#tally').innerHTML=`<div><b>${APPS.length}</b><span>Total</span></div>`+
+    STATUSES.map(x=>`<div><b>${c[x]}</b><span>${x}</span></div>`).join('');
+  if(!APPS.length){
+    $('#tableWrap').innerHTML=`<div class="empty">Nothing here yet. Save or mark jobs in step 4, or add one manually.</div>`;
+  }else{
+    $('#tableWrap').innerHTML=`<table><thead><tr><th>Role</th><th class="hcol">Platform</th><th>Status</th>
+      <th class="hcol">Date</th><th></th></tr></thead><tbody>${APPS.map(a=>{
+      const stale=a.status==='Applied'&&daysSince(a.date)>=10;
+      return `<tr>
+        <td><div class="role">${a.url?`<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer" style="color:inherit">${esc(a.role)}</a>`:esc(a.role)}</div><div class="co2">${esc(a.company)}${a.loc?' · '+esc(a.loc):''}</div></td>
+        <td class="hcol">${esc(a.platform)}</td>
+        <td><select data-st="${a.id}">${STATUSES.map(x=>`<option ${x===a.status?'selected':''}>${x}</option>`).join('')}</select></td>
+        <td class="hcol">${esc(a.date)} ${stale?'<span class="flag">follow up</span>':''}</td>
+        <td><button class="x" data-del="${a.id}" aria-label="Remove">&times;</button></td></tr>`;}).join('')}</tbody></table>`;
+  }
+  if(!storageOK)$('#tableWrap').insertAdjacentHTML('afterend',
+    `<p class="note bad" style="margin-top:12px">Your list could not be saved to the server just now. It is still
+     on screen — export the CSV so you do not lose it, then reload.</p>`);
+}
+
+document.addEventListener('change',async e=>{
+  const sel=e.target.closest('[data-st]');if(!sel)return;
+  const row=APPS.find(a=>String(a.id)===sel.dataset.st);if(!row)return;
+  row.status=sel.value;
+  const patch={status:sel.value};
+  if(sel.value==='Applied'&&!row.date){ row.date=today(); patch.date=row.date; }
+  const { error } = await sb.from('applications').update(patch).eq('id',row.id);
+  if(error){ storageOK=false; console.error(error); }
+  drawTable();
+});
+
+document.addEventListener('click',async e=>{
+  const d=e.target.closest('[data-del]');if(!d)return;
+  const id=d.dataset.del;
+  APPS=APPS.filter(a=>String(a.id)!==id);
+  drawTable(); drawJobs();
+  const { error } = await sb.from('applications').delete().eq('id',id);
+  if(error)console.error(error);
+});
+
+$('#addManual').onclick=()=>{
+  $('#mStat').innerHTML=STATUSES.map(x=>`<option ${x==='Applied'?'selected':''}>${x}</option>`).join('');
+  $('#manualForm').classList.toggle('hidden');
+};
+$('#mCancel').onclick=()=>$('#manualForm').classList.add('hidden');
+$('#mSave').onclick=async()=>{
+  const role=$('#mRole').value.trim(); if(!role||!USER)return;
+  const row={ user_id:USER.id, role, company:$('#mCo').value.trim(), loc:$('#mLoc').value.trim(),
+    platform:$('#mPlat').value.trim(), pay:'', url:$('#mUrl').value.trim(), status:$('#mStat').value, date:today() };
+  const { data, error } = await sb.from('applications').insert(row).select().single();
+  if(error){ console.error(error); storageOK=false; drawTable(); return; }
+  APPS.unshift(data);
+  ['#mRole','#mCo','#mLoc','#mPlat','#mUrl'].forEach(x=>$(x).value='');
+  $('#manualForm').classList.add('hidden');
+  drawTable();
+};
+$('#clear').onclick=async()=>{
+  if(!APPS.length||!USER)return;
+  if(!confirm('Remove all '+APPS.length+' entries from your account? This cannot be undone.'))return;
+  const { error } = await sb.from('applications').delete().eq('user_id',USER.id);
+  if(error){ console.error(error); return; }
+  APPS=[]; drawTable(); drawJobs();
+};
+
+/* ---------- exports ---------- */
+const download=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name;a.click();URL.revokeObjectURL(a.href);};
+const toCSV=rows=>rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\n');
+$('#csv').onclick=()=>download(new Blob([toCSV([['Role','Company','Location','Platform','Status','Date','Link'],
+  ...APPS.map(a=>[a.role,a.company,a.loc,a.platform,a.status,a.date,a.url||''])])],{type:'text/csv'}),'my-applications.csv');
+$('#csvJobs').onclick=()=>{
+  if(!JOBS.length)return;
+  download(new Blob([toCSV([['Role','Company','Location','Platform','Pay','Posted','Summary','Link'],
+    ...JOBS.map(j=>[j.title,j.company,j.location,j.platform,j.pay||'Not disclosed',j.posted,j.summary,j.url||''])])],
+    {type:'text/csv'}),'openings.csv');
+};
+$('#dl').onclick=()=>{
+  if(!PROFILE)return;
+  const L=[];
+  L.push('# Job search report','',`- Title: ${PROFILE.designation}`,`- Field: ${PROFILE.field}`,
+    `- Level: ${PROFILE.seniority} · ${PROFILE.years} years`,
+    `- Searching: ${$('#city').value||'anywhere'} (${$('#country option:checked').textContent}) · min ${payString()||'not set'} · ${$('#mode').value}${$('#jobType').value?' · '+$('#jobType').value:''}${$('#industry').value?' · '+$('#industry').value:''}`,'');
+  if(ATS) L.push(`- ATS score: ${ATS.overall}/100 — ${ATS.verdict}`,'');
+  L.push('## Skills found',(PROFILE.skills||[]).join(', '),'','## Matched roles','');
+  (PROFILE.roles||[]).forEach(r=>L.push(`- **${r.title}** — ${r.match}% · ${r.why}`));
+  L.push('','## Avoid',(PROFILE.avoid||[]).map(a=>'- '+a).join('\n'),'');
+  if(JOBS.length){
+    L.push('## Openings','');
+    JOBS.forEach(j=>{
+      L.push(`### ${j.title} — ${j.company}`);
+      L.push(`${j.location||''} · ${j.platform||''} · ${j.pay||'pay not disclosed'} · ${j.posted||''}`,'');
+      L.push(j.summary||'');
+      (j.requirements||[]).forEach(r=>L.push(`- ${r}`));
+      if(j.url)L.push(`[Open posting](${j.url})`);
+      L.push(`\n*Or search on ${j.platform}: ${j.title} ${j.company}*`,'');
+    });
+  }
+  download(new Blob([L.join('\n')],{type:'text/markdown'}),'job-search-report.md');
+};
+
+/* ---------- resume ATS check ---------- */
+let ATS=null;
+$('#atsJdToggle').addEventListener('change',e=>{
+  $('#atsJdWrap').classList.toggle('hidden', e.target.value!=='yes');
+});
+
+function fillAtsTargets(){
+  const roles=(PROFILE&&PROFILE.roles)||[];
+  $('#atsTarget').innerHTML=
+    `<option value="">My current title — ${esc((PROFILE&&PROFILE.designation)||'')}</option>`+
+    roles.map(r=>`<option value="${esc(r.title)}">${esc(r.title)}</option>`).join('');
+}
+
+const scoreColour=n=>n>=80?'#1F7A4C':n>=60?'#B07A18':'#C2542F';
+
+$('#runAts').onclick=async()=>{
+  const text=$('#rtext').value.trim();
+  if(!resumeB64&&text.length<120){ $('#atsStatus').textContent='Upload or paste your resume in step 1 first.'; return; }
+  const target=$('#atsTarget').value;
+  const jd=$('#atsJdToggle').value==='yes'?$('#atsJd').value.trim():'';
+  $('#runAts').disabled=true;
+  $('#atsStatus').innerHTML='<span class="spin"></span>Auditing your resume';
+  try{
+    ATS=await api('/api/ats',{pdf:resumeB64||null,text:text||null,target,jd});
+    paintAts(ATS,target,jd);
+    $('#atsStatus').textContent='';
+    if(PROFILE){ PROFILE.ats=ATS; saveProfile(); }
+  }catch(e){
+    console.error(e);
+    $('#atsStatus').textContent='That did not run. Try again in a moment.';
+  }finally{ $('#runAts').disabled=false; }
+};
+
+function paintAts(r,target,jd){
+  const C=2*Math.PI*52, col=scoreColour(r.overall);
+  $('#atsOut').innerHTML=`
+    <div class="gauge">
+      <div class="ring">
+        <svg width="118" height="118" viewBox="0 0 118 118" aria-hidden="true">
+          <circle cx="59" cy="59" r="52" fill="none" stroke="var(--line-2)" stroke-width="9"></circle>
+          <circle cx="59" cy="59" r="52" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${C}" stroke-dashoffset="${C-(C*r.overall/100)}"></circle>
+        </svg>
+        <div class="num" style="color:${col}">${r.overall}<small>OUT OF 100</small></div>
+      </div>
+      <div class="said">
+        <h3>${esc(r.verdict)}</h3>
+        <p>Scored against ${jd?'the job description you pasted':(target?esc(target):'your current title')}.</p>
+      </div>
+    </div>
+
+    ${(r.kill_risks||[]).length?`<div class="risk"><b>These could stop a parser reading your resume at all</b>
+      <ul>${r.kill_risks.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+
+    <div class="dims">${(r.dimensions||[]).map(d=>`
+      <div class="dim">
+        <div class="dh"><span class="dn">${esc(d.name)}</span><span class="ds" style="color:${scoreColour(d.score)}">${d.score}</span></div>
+        <div class="db"><i style="width:${d.score}%;background:${scoreColour(d.score)}"></i></div>
+        <p>${esc(d.note)}</p>
+      </div>`).join('')}</div>
+
+    ${r.one_thing?`<div class="onething"><b>THE ONE CHANGE WORTH MAKING FIRST</b>${esc(r.one_thing)}</div>`:''}
+
+    <div style="margin-bottom:20px">
+      <label>Keywords this resume is missing</label>
+      <div class="chips">${(r.missing_keywords||[]).map(k=>`<span class="chip warn">${esc(k)}</span>`).join('')}</div>
+    </div>
+
+    <label style="margin-bottom:8px">What to fix, highest return first</label>
+    <div>${(r.fixes||[]).map(f=>`
+      <div class="fix"><span class="pri ${f.priority}">${f.priority}</span>
+        <div><p class="ft">${esc(f.fix)}</p><p class="fw">${esc(f.why)}</p></div></div>`).join('')}</div>
+
+    <div class="row"><button class="ghost" id="atsMd">Download this report (.md)</button></div>`;
+  $('#atsOut').classList.remove('hidden');
+  $('#atsCaveat').style.display='block';
+  $('#atsCaveat').innerHTML='<strong>How to read this.</strong> There is no universal ATS score — real systems '+
+    'grade you against one specific job description. This is an audit of the things you control, scored against '+
+    (jd?'the posting you pasted, which is the most accurate way to use it.':'a typical posting for this role. Paste a real job description above for a sharper number.');
+  $('#atsMd').onclick=()=>downloadAtsReport(r,target);
+}
+
+function downloadAtsReport(r,target){
+  const L=['# Resume ATS report','',`**Score: ${r.overall}/100** — ${r.verdict}`,
+    `Scored against: ${target||((PROFILE&&PROFILE.designation)||'current title')}`,''];
+  L.push('## Dimensions','');
+  (r.dimensions||[]).forEach(d=>L.push(`- **${d.name}: ${d.score}** — ${d.note}`));
+  if((r.kill_risks||[]).length){ L.push('','## Parser risks',''); r.kill_risks.forEach(x=>L.push(`- ${x}`)); }
+  if(r.one_thing) L.push('','## Fix this first',r.one_thing);
+  L.push('','## Missing keywords',(r.missing_keywords||[]).join(', '),'','## Fixes','');
+  (r.fixes||[]).forEach(f=>L.push(`- **[${f.priority}] ${f.fix}** — ${f.why}`));
+  download(new Blob([L.join('\n')],{type:'text/markdown'}),'ats-report.md');
+}
+
+/* ---------- accounts ---------- */
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let USER = null;
+
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = $('#email').value.trim();
+  if(!email) return;
+  $('#authBtn').disabled = true;
+  $('#authBtn').textContent = 'Sending…';
+  $('#authErr').classList.add('hidden');
+  const { error } = await sb.auth.signInWithOtp({
+    email, options:{ emailRedirectTo: location.origin + location.pathname }
+  });
+  $('#authBtn').disabled = false;
+  $('#authBtn').textContent = 'Email me a sign-in link';
+  if(error){
+    $('#authErr').textContent = 'That did not send: ' + error.message;
+    $('#authErr').classList.remove('hidden');
+    return;
+  }
+  $('#authForm').classList.add('hidden');
+  $('#sent').textContent = 'Check ' + email + ' — the sign-in link is on its way. It works once, and expires in an hour.';
+  $('#sent').classList.remove('hidden');
+});
+
+$('#signout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+sb.auth.onAuthStateChange((_e, session) => applySession(session));
+sb.auth.getSession().then(({data}) => applySession(data.session));
+
+async function applySession(session){
+  USER = session ? session.user : null;
+  const inApp = !!USER;
+  $('#gate').classList.toggle('hidden', inApp);
+  $('#acct').classList.toggle('hidden', !inApp);
+  document.querySelectorAll('.app').forEach(el => el.classList.toggle('hidden', !inApp));
+  if(!inApp){ APPS=[]; return; }
+  $('#whoEmail').textContent = USER.email;
+  history.replaceState(null,'',location.origin+location.pathname);   // strip the token from the URL
+  await load();
+  await restoreProfile();
+}
+
+/* remember the parsed resume so a returning visitor skips step 1 */
+async function saveProfile(){
+  if(!USER||!PROFILE) return;
+  await sb.from('profiles').upsert({ user_id:USER.id, profile:PROFILE, updated_at:new Date().toISOString() });
+}
+async function restoreProfile(){
+  const { data } = await sb.from('profiles').select('profile').eq('user_id',USER.id).maybeSingle();
+  if(data && data.profile){
+    PROFILE = data.profile;
+    paintProfile(PROFILE);
+    $('#s1').setAttribute('data-done','1');
+    enable('#s2',true); enable('#sats',true); enable('#s3',true);
+    fillAtsTargets();
+    if(PROFILE.ats){ ATS=PROFILE.ats; paintAts(ATS,'',''); }
+    $('#s1status').textContent = 'Using the resume you uploaded before — upload a new one to replace it.';
+    $('#atsStatus').textContent = PROFILE.ats ? 'Showing your last check. Re-upload the resume to run it again.' : '';
+  }
+}
+
+drawJobs();
+</script>
+
+</html>
